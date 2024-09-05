@@ -1,0 +1,22 @@
+library(tidyverse)
+library(writexl)
+
+num_pigs <- 10
+num_eyes <- 2
+
+##Generate barcodes
+set.seed(8) #set seed
+barcode_num <- sample(num_pigs*num_eyes) %>% #generate unique random numbers
+  str_pad(2, pad = "0") #add zeros to the front of number
+Barcode <- str_c("VEPA", barcode_num) #add "BPF" (blinded pig flatmounts)
+
+#Generate pig IDs
+PigID <- c("PB14", "PB18", "PB24", "PB26", "PB28", "PB29", "PB30", "PB31", "PB33", "PB34")
+
+#Generate pig eyes
+Eye <- rep(c("OD", "OS"), each = 10)
+
+key <- data.frame(Barcode, PigID, Eye)
+
+#Export to excel
+write_xlsx(key, "C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEPA Blinding\\Blinding key 220705.xlsx")

@@ -1,0 +1,1850 @@
+---
+title: "PB34_calculations_RMarkdown"
+author: "Kathleen Heng"
+date: "7/05/2022"
+output: html_document
+---
+
+```{r}
+
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(quantmod)
+library(writexl)
+library(beepr)
+
+```
+
+```{r}
+
+#load the data
+PB34_baseline_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD")
+PB34_baseline_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD")
+PB34_week1_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD")
+PB34_week1_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD")
+PB34_week2_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD")
+PB34_week2_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD")
+PB34_week3_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD")
+PB34_week3_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD")
+PB34_week4_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD")
+PB34_week4_OD <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD")
+
+```
+
+
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OD", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_baseline_OD_run1 <- select(PB34_baseline_OD, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OD_run2 <- select(PB34_baseline_OD, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OD_run3 <- select(PB34_baseline_OD, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OD_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OD_tall <- bind_rows(PB34_baseline_OD_run1, PB34_baseline_OD_run2, PB34_baseline_OD_run3, PB34_baseline_OD_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_baseline_OD_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_baseline_OD") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_baseline_OD[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_baseline_OD[['ms_1']]
+uv1_vector <- PB34_baseline_OD[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_baseline_OD[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_baseline_OD[['ms_2']]
+uv2_vector <- PB34_baseline_OD[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_baseline_OD[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_baseline_OD[['ms_3']]
+uv3_vector <- PB34_baseline_OD[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_baseline_OD_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_baseline_OD_mean[['ms']]
+uv_mean_vector <- PB34_baseline_OD_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_baseline_OD[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_baseline_OD[['ms_1']]
+uv1_vector <- PB34_baseline_OD[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_baseline_OD[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_baseline_OD[['ms_2']]
+uv2_vector <- PB34_baseline_OD[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_baseline_OD[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_baseline_OD[['ms_3']]
+uv3_vector <- PB34_baseline_OD[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_baseline_OD_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_baseline_OD_mean[['ms']]
+uv_mean_vector <- PB34_baseline_OD_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms clsoest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#create data frame
+PB34_OD_summary <- data.frame("latency" = mean50,
+  "latency_sd" = sd(c(peak_ms_1, peak_ms_2, peak_ms_3)),
+  "amplitude" = (peak_uv_mean - valley_mean_uv))
+
+```
+
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OD", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week1_OD_run1 <- select(PB34_week1_OD, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OD_run2 <- select(PB34_week1_OD, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OD_run3 <- select(PB34_week1_OD, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OD_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OD_tall <- bind_rows(PB34_week1_OD_run1, PB34_week1_OD_run2, PB34_week1_OD_run3, PB34_week1_OD_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week1_OD_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week1_OD") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week1_OD[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week1_OD[['ms_1']]
+uv1_vector <- PB34_week1_OD[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week1_OD[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week1_OD[['ms_2']]
+uv2_vector <- PB34_week1_OD[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week1_OD[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week1_OD[['ms_3']]
+uv3_vector <- PB34_week1_OD[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week1_OD_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week1_OD_mean[['ms']]
+uv_mean_vector <- PB34_week1_OD_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week1_OD[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week1_OD[['ms_1']]
+uv1_vector <- PB34_week1_OD[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week1_OD[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week1_OD[['ms_2']]
+uv2_vector <- PB34_week1_OD[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week1_OD[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week1_OD[['ms_3']]
+uv3_vector <- PB34_week1_OD[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week1_OD_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week1_OD_mean[['ms']]
+uv_mean_vector <- PB34_week1_OD_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OD_summary[nrow(PB34_OD_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OD", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week2_OD_run1 <- select(PB34_week2_OD, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OD_run2 <- select(PB34_week2_OD, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OD_run3 <- select(PB34_week2_OD, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OD_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OD_tall <- bind_rows(PB34_week2_OD_run1, PB34_week2_OD_run2, PB34_week2_OD_run3, PB34_week2_OD_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week2_OD_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week2_OD") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week2_OD[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week2_OD[['ms_1']]
+uv1_vector <- PB34_week2_OD[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week2_OD[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week2_OD[['ms_2']]
+uv2_vector <- PB34_week2_OD[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week2_OD[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week2_OD[['ms_3']]
+uv3_vector <- PB34_week2_OD[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week2_OD_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week2_OD_mean[['ms']]
+uv_mean_vector <- PB34_week2_OD_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week2_OD[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week2_OD[['ms_1']]
+uv1_vector <- PB34_week2_OD[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week2_OD[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week2_OD[['ms_2']]
+uv2_vector <- PB34_week2_OD[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week2_OD[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week2_OD[['ms_3']]
+uv3_vector <- PB34_week2_OD[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week2_OD_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week2_OD_mean[['ms']]
+uv_mean_vector <- PB34_week2_OD_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OD_summary[nrow(PB34_OD_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OD", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week3_OD_run1 <- select(PB34_week3_OD, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OD_run2 <- select(PB34_week3_OD, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OD_run3 <- select(PB34_week3_OD, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OD_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OD_tall <- bind_rows(PB34_week3_OD_run1, PB34_week3_OD_run2, PB34_week3_OD_run3, PB34_week3_OD_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week3_OD_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week3_OD") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week3_OD[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week3_OD[['ms_1']]
+uv1_vector <- PB34_week3_OD[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week3_OD[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week3_OD[['ms_2']]
+uv2_vector <- PB34_week3_OD[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week3_OD[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week3_OD[['ms_3']]
+uv3_vector <- PB34_week3_OD[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week3_OD_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week3_OD_mean[['ms']]
+uv_mean_vector <- PB34_week3_OD_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week3_OD[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week3_OD[['ms_1']]
+uv1_vector <- PB34_week3_OD[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week3_OD[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week3_OD[['ms_2']]
+uv2_vector <- PB34_week3_OD[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week3_OD[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week3_OD[['ms_3']]
+uv3_vector <- PB34_week3_OD[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week3_OD_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week3_OD_mean[['ms']]
+uv_mean_vector <- PB34_week3_OD_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OD_summary[nrow(PB34_OD_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OD", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week4_OD_run1 <- select(PB34_week4_OD, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OD_run2 <- select(PB34_week4_OD, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OD_run3 <- select(PB34_week4_OD, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OD_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OD_tall <- bind_rows(PB34_week4_OD_run1, PB34_week4_OD_run2, PB34_week4_OD_run3, PB34_week4_OD_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week4_OD_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week4_OD") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week4_OD[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week4_OD[['ms_1']]
+uv1_vector <- PB34_week4_OD[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week4_OD[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week4_OD[['ms_2']]
+uv2_vector <- PB34_week4_OD[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week4_OD[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week4_OD[['ms_3']]
+uv3_vector <- PB34_week4_OD[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week4_OD_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week4_OD_mean[['ms']]
+uv_mean_vector <- PB34_week4_OD_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week4_OD[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week4_OD[['ms_1']]
+uv1_vector <- PB34_week4_OD[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week4_OD[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week4_OD[['ms_2']]
+uv2_vector <- PB34_week4_OD[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week4_OD[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week4_OD[['ms_3']]
+uv3_vector <- PB34_week4_OD[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week4_OD_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week4_OD_mean[['ms']]
+uv_mean_vector <- PB34_week4_OD_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OD_summary[nrow(PB34_OD_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+#Export to excel
+write_xlsx(PB34_OD_summary, "C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\Summary Data\\Summary Data\\PB34_OD_summary.xlsx")
+
+```
+
+```{r}
+
+#load the data
+PB34_baseline_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS")
+PB34_baseline_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS")
+PB34_week1_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS")
+PB34_week1_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS")
+PB34_week2_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS")
+PB34_week2_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS")
+PB34_week3_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS")
+PB34_week3_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS")
+PB34_week4_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS")
+PB34_week4_OS <- read_excel("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS")
+
+```
+
+
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "baseline_OS", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_baseline_OS_run1 <- select(PB34_baseline_OS, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OS_run2 <- select(PB34_baseline_OS, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OS_run3 <- select(PB34_baseline_OS, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OS_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_baseline_OS_tall <- bind_rows(PB34_baseline_OS_run1, PB34_baseline_OS_run2, PB34_baseline_OS_run3, PB34_baseline_OS_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_baseline_OS_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_baseline_OS") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_baseline_OS[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_baseline_OS[['ms_1']]
+uv1_vector <- PB34_baseline_OS[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_baseline_OS[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_baseline_OS[['ms_2']]
+uv2_vector <- PB34_baseline_OS[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_baseline_OS[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_baseline_OS[['ms_3']]
+uv3_vector <- PB34_baseline_OS[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_baseline_OS_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_baseline_OS_mean[['ms']]
+uv_mean_vector <- PB34_baseline_OS_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_baseline_OS[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_baseline_OS[['ms_1']]
+uv1_vector <- PB34_baseline_OS[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_baseline_OS[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_baseline_OS[['ms_2']]
+uv2_vector <- PB34_baseline_OS[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_baseline_OS[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_baseline_OS[['ms_3']]
+uv3_vector <- PB34_baseline_OS[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_baseline_OS_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_baseline_OS_mean[['ms']]
+uv_mean_vector <- PB34_baseline_OS_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms clsoest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#create data frame
+PB34_OS_summary <- data.frame("latency" = mean50,
+  "latency_sd" = sd(c(peak_ms_1, peak_ms_2, peak_ms_3)),
+  "amplitude" = (peak_uv_mean - valley_mean_uv))
+
+```
+
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week1_OS", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week1_OS_run1 <- select(PB34_week1_OS, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OS_run2 <- select(PB34_week1_OS, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OS_run3 <- select(PB34_week1_OS, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OS_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week1_OS_tall <- bind_rows(PB34_week1_OS_run1, PB34_week1_OS_run2, PB34_week1_OS_run3, PB34_week1_OS_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week1_OS_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week1_OS") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week1_OS[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week1_OS[['ms_1']]
+uv1_vector <- PB34_week1_OS[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week1_OS[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week1_OS[['ms_2']]
+uv2_vector <- PB34_week1_OS[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week1_OS[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week1_OS[['ms_3']]
+uv3_vector <- PB34_week1_OS[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week1_OS_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week1_OS_mean[['ms']]
+uv_mean_vector <- PB34_week1_OS_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week1_OS[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week1_OS[['ms_1']]
+uv1_vector <- PB34_week1_OS[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week1_OS[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week1_OS[['ms_2']]
+uv2_vector <- PB34_week1_OS[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week1_OS[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week1_OS[['ms_3']]
+uv3_vector <- PB34_week1_OS[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week1_OS_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week1_OS_mean[['ms']]
+uv_mean_vector <- PB34_week1_OS_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OS_summary[nrow(PB34_OS_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week2_OS", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week2_OS_run1 <- select(PB34_week2_OS, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OS_run2 <- select(PB34_week2_OS, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OS_run3 <- select(PB34_week2_OS, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OS_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week2_OS_tall <- bind_rows(PB34_week2_OS_run1, PB34_week2_OS_run2, PB34_week2_OS_run3, PB34_week2_OS_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week2_OS_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week2_OS") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week2_OS[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week2_OS[['ms_1']]
+uv1_vector <- PB34_week2_OS[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week2_OS[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week2_OS[['ms_2']]
+uv2_vector <- PB34_week2_OS[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week2_OS[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week2_OS[['ms_3']]
+uv3_vector <- PB34_week2_OS[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week2_OS_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week2_OS_mean[['ms']]
+uv_mean_vector <- PB34_week2_OS_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week2_OS[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week2_OS[['ms_1']]
+uv1_vector <- PB34_week2_OS[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week2_OS[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week2_OS[['ms_2']]
+uv2_vector <- PB34_week2_OS[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week2_OS[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week2_OS[['ms_3']]
+uv3_vector <- PB34_week2_OS[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week2_OS_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week2_OS_mean[['ms']]
+uv_mean_vector <- PB34_week2_OS_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OS_summary[nrow(PB34_OS_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week3_OS", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week3_OS_run1 <- select(PB34_week3_OS, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OS_run2 <- select(PB34_week3_OS, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OS_run3 <- select(PB34_week3_OS, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OS_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week3_OS_tall <- bind_rows(PB34_week3_OS_run1, PB34_week3_OS_run2, PB34_week3_OS_run3, PB34_week3_OS_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week3_OS_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week3_OS") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week3_OS[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week3_OS[['ms_1']]
+uv1_vector <- PB34_week3_OS[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week3_OS[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week3_OS[['ms_2']]
+uv2_vector <- PB34_week3_OS[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week3_OS[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week3_OS[['ms_3']]
+uv3_vector <- PB34_week3_OS[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week3_OS_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week3_OS_mean[['ms']]
+uv_mean_vector <- PB34_week3_OS_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week3_OS[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week3_OS[['ms_1']]
+uv1_vector <- PB34_week3_OS[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week3_OS[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week3_OS[['ms_2']]
+uv2_vector <- PB34_week3_OS[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week3_OS[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week3_OS[['ms_3']]
+uv3_vector <- PB34_week3_OS[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week3_OS_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week3_OS_mean[['ms']]
+uv_mean_vector <- PB34_week3_OS_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OS_summary[nrow(PB34_OS_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+```
+```{r}
+##visualize data
+#create new column for mean ms and mean uV
+ms1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(1))
+ms2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(3))
+ms3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(5))
+uv1 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(2))
+uv2 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(4))
+uv3 <- read_xlsx("C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\VEP_CLEAN_Ranalysis\\PB34_CLEAN.xlsx", "week4_OS", range = cell_cols(6))
+
+ms <- data.frame(ms1, ms2, ms3) %>% 
+  mutate(mean_ms = (ms_1 + ms_2 + ms_3)/3)
+uv <- data.frame(uv1, uv2, uv3) %>% 
+  mutate(mean_uv = (uV_1 + uV_2 + uV_3)/3)
+means <- bind_cols(ms, uv)
+
+  #reshape data
+PB34_week4_OS_run1 <- select(PB34_week4_OS, ms_1, uV_1) %>% 
+  mutate(run = 1) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OS_run2 <- select(PB34_week4_OS, ms_2, uV_2) %>% 
+  mutate(run = 2)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OS_run3 <- select(PB34_week4_OS, ms_3, uV_3) %>% 
+  mutate(run = 3)%>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OS_mean <- select(means, mean_ms, mean_uv) %>% 
+  mutate(run = 4) %>% 
+  set_names("ms", "uv", "run")
+
+PB34_week4_OS_tall <- bind_rows(PB34_week4_OS_run1, PB34_week4_OS_run2, PB34_week4_OS_run3, PB34_week4_OS_mean) %>% 
+  mutate(run = as.factor(run))
+
+#plot data
+  PB34_week4_OS_tall %>% 
+    ggplot(aes(ms, uv)) + geom_line(aes(color = run, alpha = run), size =2) + 
+    ggtitle("PB34_week4_OS") +
+    #xlim(0, 200) + ylim(-10, 10) +
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_color_manual(values=c('#F8766D', '#00BA38', '#619CFF', '#000000')) +
+    scale_alpha_manual(values=c(0.4,0.4,0.4,1))
+
+```
+
+```{r}
+#find the all the peaks in the waveforms
+uv1_peaks <- PB34_week4_OS[['uV_1']] %>% 
+  findPeaks(thresh = 0)
+ms1_vector <- PB34_week4_OS[['ms_1']]
+uv1_vector <- PB34_week4_OS[['uV_1']]
+peaks_ms_1_vec <- ms1_vector[uv1_peaks]
+peaks_ms_1 <- data.frame(peaks_ms_1_vec) #this gives ms of peaks in data frame
+peaks_uv_1 <- uv1_vector[uv1_peaks]
+peaks_uv_1 <- data.frame(peaks_uv_1) #this gives uv of peaks in data frame
+
+uv2_peaks <- PB34_week4_OS[['uV_2']] %>% 
+  findPeaks(thresh = 0)
+ms2_vector <- PB34_week4_OS[['ms_2']]
+uv2_vector <- PB34_week4_OS[['uV_2']]
+peaks_ms_2_vec <- ms2_vector[uv2_peaks]
+peaks_ms_2 <- data.frame(peaks_ms_2_vec) #this gives ms of peaks in data frame
+peaks_uv_2 <- uv2_vector[uv2_peaks]
+peaks_uv_2 <- data.frame(peaks_uv_2) #this gives uv of peaks in data frame
+
+uv3_peaks <- PB34_week4_OS[['uV_3']] %>% 
+  findPeaks(thresh = 0)
+ms3_vector <- PB34_week4_OS[['ms_3']]
+uv3_vector <- PB34_week4_OS[['uV_3']]
+peaks_ms_3_vec <- ms3_vector[uv3_peaks]
+peaks_ms_3 <- data.frame(peaks_ms_3_vec) #this gives ms of peaks in data frame
+peaks_uv_3 <- uv3_vector[uv3_peaks]
+peaks_uv_3 <- data.frame(peaks_uv_3) #this gives uv of peaks in data frame
+
+uv_mean_peaks <- PB34_week4_OS_mean[['uv']] %>% 
+  findPeaks(thresh = 0)
+ms_mean_vector <- PB34_week4_OS_mean[['ms']]
+uv_mean_vector <- PB34_week4_OS_mean[['uv']]
+peaks_ms_mean_vec <- ms_mean_vector[uv_mean_peaks]
+peaks_ms_mean <- data.frame(peaks_ms_mean_vec) #this gives ms of peaks in data frame
+peaks_uv_mean_vec <- uv_mean_vector[uv_mean_peaks]
+peaks_uv_mean <- data.frame(peaks_uv_mean_vec) #this gives uv of peaks in data frame
+
+#find the all the valleys in the waveforms
+uv1_valleys <- PB34_week4_OS[['uV_1']] %>% 
+  findValleys(thresh = 0)
+ms1_vector <- PB34_week4_OS[['ms_1']]
+uv1_vector <- PB34_week4_OS[['uV_1']]
+valleys_ms_1 <- ms1_vector[uv1_valleys]
+valleys_ms_1 <- data.frame(valleys_ms_1) #this gives ms of valleys in data frame
+valleys_uv_1 <- uv1_vector[uv1_valleys]
+valleys_uv_1 <- data.frame(valleys_uv_1) #this gives uv of valleys in data frame
+
+uv2_valleys <- PB34_week4_OS[['uV_2']] %>% 
+  findValleys(thresh = 0)
+ms2_vector <- PB34_week4_OS[['ms_2']]
+uv2_vector <- PB34_week4_OS[['uV_2']]
+valleys_ms_2 <- ms2_vector[uv2_valleys]
+valleys_ms_2 <- data.frame(valleys_ms_2) #this gives ms of valleys in data frame
+valleys_uv_2 <- uv2_vector[uv2_valleys]
+valleys_uv_2 <- data.frame(valleys_uv_2) #this gives uv of valleys in data frame
+
+uv3_valleys <- PB34_week4_OS[['uV_3']] %>% 
+  findValleys(thresh = 0)
+ms3_vector <- PB34_week4_OS[['ms_3']]
+uv3_vector <- PB34_week4_OS[['uV_3']]
+valleys_ms_3 <- ms3_vector[uv3_valleys]
+valleys_ms_3 <- data.frame(valleys_ms_3) #this gives ms of valleys in data frame
+valleys_uv_3 <- uv3_vector[uv3_valleys]
+valleys_uv_3 <- data.frame(valleys_uv_3) #this gives uv of valleys in data frame
+
+uv_mean_valleys <- PB34_week4_OS_mean[['uv']] %>% 
+  findValleys(thresh = 0)
+ms_mean_vector <- PB34_week4_OS_mean[['ms']]
+uv_mean_vector <- PB34_week4_OS_mean[['uv']]
+valleys_ms_mean <- ms_mean_vector[uv_mean_valleys]
+valleys_ms_mean <- data.frame(valleys_ms_mean) #this gives ms of valleys in data frame
+valleys_uv_mean <- uv_mean_vector[uv_mean_valleys]
+valleys_uv_mean <- data.frame(valleys_uv_mean) #this gives uv of valleys in data frame
+
+```
+
+```{r}
+#find ms index of peak closest to 50 ms in average waveform
+peak50ms_mean <- which(abs(peaks_ms_mean-50)==min(abs(peaks_ms_mean-50)))
+
+#identify time of peak closest to 50 ms in average waveform
+mean50 <- peaks_ms_mean[peak50ms_mean,]
+
+#identify ms index of peak in individual waveforms closest to average 50 ms peak
+peak1_mean <- which(abs(peaks_ms_1-mean50)==min(abs(peaks_ms_1-mean50)))
+peak2_mean <- which(abs(peaks_ms_2-mean50)==min(abs(peaks_ms_2-mean50)))
+peak3_mean <- which(abs(peaks_ms_3-mean50)==min(abs(peaks_ms_3-mean50)))
+
+#identify time of peak in individual waveforms closest to average 50 ms peak
+peak_ms_1 <- peaks_ms_1[peak1_mean,]
+peak_ms_2 <- peaks_ms_2[peak2_mean,]
+peak_ms_3 <- peaks_ms_3[peak3_mean,]
+
+#identify potential of peak in individual waveforms closest to average 50 ms peak
+peak_uv_1 <- peaks_uv_1[peak1_mean,]
+peak_uv_2 <- peaks_uv_2[peak2_mean,]
+peak_uv_3 <- peaks_uv_3[peak3_mean,]
+peak_uv_mean <- peaks_uv_mean[peak50ms_mean,]
+
+#find mean and standard deviation of 50 ms peaks
+latency <- mean(c(peak_ms_1, peak_ms_2, peak_ms_3))
+latency_sd <- sd(c(peak_ms_1, peak_ms_2, peak_ms_3))
+
+#find ms index of valley before 50 ms peak
+valley_ms_1 <- which(peaks_ms_1_vec[peak1_mean]-valleys_ms_1 > 0)
+valley_ms_2 <- which(peaks_ms_2_vec[peak2_mean]-valleys_ms_2 > 0)
+valley_ms_3 <- which(peaks_ms_3_vec[peak3_mean]-valleys_ms_3 > 0)
+valley_ms_mean <- max(which(peaks_ms_mean_vec[peak50ms_mean]-valleys_ms_mean > 0))
+
+#identify time of valley before 50 ms peak
+valley1_ms <- valleys_ms_1[valley_ms_1,]
+valley2_ms <- valleys_ms_2[valley_ms_2,]
+valley3_ms <- valleys_ms_3[valley_ms_3,]
+
+#identify uv of valley before 50 ms peak
+valley1_uv <- valleys_uv_1[valley_ms_1,]
+valley2_uv <- valleys_uv_2[valley_ms_2,]
+valley3_uv <- valleys_uv_3[valley_ms_3,]
+valley_mean_uv <- valleys_uv_mean[valley_ms_mean,]
+
+#identify amplitude of peak in uv
+amp1 <- (peak_uv_1 - valley1_uv)
+amp2 <- (peak_uv_2 - valley2_uv)
+amp3 <- (peak_uv_3 - valley3_uv)
+
+#add row
+PB34_OS_summary[nrow(PB34_OS_summary) + 1,] <- c(mean50, sd(c(peak_ms_1, peak_ms_2, peak_ms_3)), (peak_uv_mean - valley_mean_uv))
+
+#Export to excel
+write_xlsx(PB34_OS_summary, "C:\\Users\\Kathy Heng\\Desktop\\VEP Results\\Summary Data\\Summary Data\\PB34_OS_summary.xlsx")
+
+```
+
+```{r}
+beep()
+```
+
